@@ -183,11 +183,24 @@ function renderChartById(id, type, source, title){
   const canvas = document.getElementById('canvas-'+id);
   if(!canvas) return;
   if(chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+  // Funnel chart uses custom canvas renderer, not Chart.js
+  if(type === 'funnel-chart'){
+    const data = getDataForSource(source);
+    drawFunnelChart(canvas, data, title, COLORS);
+    chartInstances[id] = { destroy: ()=>{ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); } };
+    return;
+  }
   const data = getDataForSource(source);
   chartInstances[id] = buildChart(canvas, type, data, title, COLORS, 12, 'top');
 }
 
 function buildChart(canvas, type, data, title, colors, fontSize, legendPos){
+  // Funnel charts are handled separately via drawFunnelChart
+  if(type === 'funnel-chart'){
+    drawFunnelChart(canvas, data, title, colors);
+    return { destroy: ()=>{ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); } };
+  }
+
   const isStacked = type==='bar-stacked';
   const isMixed = type==='mixed';
   const isArea = type==='line-area';
@@ -232,6 +245,110 @@ function buildChart(canvas, type, data, title, colors, fontSize, legendPos){
     }
   };
   return new Chart(canvas, cfg);
+}
+
+// ===================== FUNNEL CHART (Canvas 직접 렌더링) =====================
+function drawFunnelChart(canvas, data, title, colors) {
+  const ctx = canvas.getContext('2d');
+  // Make canvas fill its container
+  const parent = canvas.parentElement;
+  canvas.width  = parent ? parent.clientWidth  || 400 : 400;
+  canvas.height = parent ? parent.clientHeight || 300 : 300;
+
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Build step array from dataset
+  const labels   = data.labels  || [];
+  const rawVals  = (data.datasets[0] && data.datasets[0].data) || [];
+  if (!labels.length) { ctx.fillStyle='#9aa5b4'; ctx.font='14px sans-serif'; ctx.fillText('데이터 없음', W/2-30, H/2); return; }
+
+  // Normalise so max = 1
+  const maxVal = Math.max(...rawVals.map(v=>Math.abs(Number(v))||0), 1);
+  const steps  = labels.map((lbl, i) => ({
+    label : lbl,
+    value : Math.abs(Number(rawVals[i]) || 0),
+    ratio : Math.abs(Number(rawVals[i]) || 0) / maxVal,
+    color : colors[i % colors.length],
+  }));
+
+  const n        = steps.length;
+  const padTop   = title ? 36 : 16;
+  const padBot   = 16;
+  const padSide  = 20;
+  const gap      = 6;
+  const stepH    = Math.floor((H - padTop - padBot - gap * (n - 1)) / n);
+  const maxW     = W - padSide * 2;
+  const minRatio = 0.28; // smallest bar is at least 28% width
+
+  // Draw title
+  if (title) {
+    ctx.fillStyle = '#0f1923';
+    ctx.font = 'bold 13px Pretendard, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, W / 2, 22);
+  }
+
+  steps.forEach((step, i) => {
+    const y       = padTop + i * (stepH + gap);
+    const barW    = Math.round(maxW * (minRatio + step.ratio * (1 - minRatio)));
+    const x       = (W - barW) / 2;
+
+    // Trapezoid path (wider top, narrower bottom — classic funnel shape)
+    const nextRatio = (i < n - 1)
+      ? (minRatio + steps[i + 1].ratio * (1 - minRatio))
+      : minRatio + step.ratio * (1 - minRatio) * 0.7;
+    const nextW  = Math.round(maxW * nextRatio);
+    const xNext  = (W - nextW) / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(x,        y);
+    ctx.lineTo(x + barW, y);
+    ctx.lineTo(xNext + nextW, y + stepH);
+    ctx.lineTo(xNext,         y + stepH);
+    ctx.closePath();
+
+    // Fill with gradient
+    const grad = ctx.createLinearGradient(x, y, x + barW, y);
+    grad.addColorStop(0,   step.color + 'dd');
+    grad.addColorStop(0.5, step.color + 'ff');
+    grad.addColorStop(1,   step.color + 'dd');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Subtle border
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+
+    // Label text
+    const textY = y + stepH / 2 + 1;
+    ctx.textAlign  = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Value badge (right side)
+    const valStr = step.value.toLocaleString();
+    ctx.font = 'bold 12px DM Mono, monospace';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(valStr, W / 2 + barW * 0.28, textY);
+
+    // Label (left-ish of centre)
+    ctx.font = 'bold 12px Pretendard, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(step.label, W / 2 - barW * 0.15, textY);
+
+    // Conversion rate arrow between steps
+    if (i < n - 1 && step.value > 0) {
+      const rate = Math.round((steps[i + 1].value / step.value) * 100);
+      ctx.font      = '10px Pretendard, sans-serif';
+      ctx.fillStyle = '#4a5568';
+      ctx.textAlign = 'right';
+      ctx.fillText(`→ ${rate}%`, W - padSide + 14, y + stepH + gap / 2);
+    }
+  });
+
+  ctx.textBaseline = 'alphabetic'; // reset
 }
 
 function refreshAllCharts(){
@@ -358,6 +475,7 @@ const CHART_TYPES = [
   {v:'scatter',icon:'✦',label:'산점도'},
   {v:'bubble',icon:'🫧',label:'버블'},
   {v:'mixed',icon:'🔀',label:'혼합'},
+  {v:'funnel-chart',icon:'🔽',label:'퍼널'},
 ];
 
 function editCard(id) {
