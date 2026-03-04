@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Playtag Growth Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">Play<span>tag</span><br/><span style="font-size:10px;font-weight:400;color:#3a5068">Growth Dashboard</span></div>
+  <div class="sidebar-section">분석</div>
+  <div class="sidebar-item active" onclick="switchView('dashboard')">
+    <span class="icon">📊</span><span>대시보드</span>
+  </div>
+  <div class="sidebar-item" onclick="switchView('data')">
+    <span class="icon">📋</span><span>데이터 입력</span>
+  </div>
+  <div class="sidebar-item" onclick="switchView('charts')">
+    <span class="icon">📈</span><span>차트 빌더</span>
+  </div>
+  <div class="sidebar-section">Growth</div>
+  <div class="sidebar-item" onclick="switchView('funnel')">
+    <span class="icon">🔽</span><span>Growth Funnel</span>
+  </div>
+  <div class="sidebar-item" onclick="switchView('predict')">
+    <span class="icon">🔮</span><span>예측 시뮬레이터</span>
+    <span class="sidebar-badge">NEW</span>
+  </div>
+  <div class="sidebar-item" onclick="switchView('dept')">
+    <span class="icon">🏢</span><span>부서별 KPI</span>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Overview Dashboard <span>Playtag Growth · 2026</span></div>
+    <button class="btn btn-secondary" onclick="exportData()">⬇ 내보내기</button>
+    <button class="btn btn-primary" onclick="openAddChart()">＋ 차트 추가</button>
+  </div>
+
+  <div class="content" id="main-content">
+
+    <!-- ===== DASHBOARD VIEW ===== -->
+    <div id="view-dashboard">
+      <div class="kpi-grid">
+        <div class="kpi-card blue">
+          <div class="kpi-label">누적 기관수</div>
+          <div class="kpi-value" id="kpi-total">1,000</div>
+          <div class="kpi-delta delta-up">▲ +563 신규계약 (2026)</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Retention Rate</div>
+          <div class="kpi-value" id="kpi-retention">83%</div>
+          <div class="kpi-delta delta-up">▲ 목표 90% (시나리오1)</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">Outbound 비중</div>
+          <div class="kpi-value">99%</div>
+          <div class="kpi-delta delta-down">▼ Product driven 전환 필요</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">6,000 목표 달성 예측</div>
+          <div class="kpi-value">2030</div>
+          <div class="kpi-delta">현재 속도 유지 시</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid" id="dashboard-grid">
+        <!-- cards injected by JS -->
+      </div>
+    </div>
+
+    <!-- ===== DATA INPUT VIEW ===== -->
+    <div id="view-data" class="hidden">
+      <div class="tabs">
+        <div class="tab active" onclick="switchDataTab(this,'채널별신규')">채널별 신규계약</div>
+        <div class="tab" onclick="switchDataTab(this,'연도별누적')">연도별 누적</div>
+        <div class="tab" onclick="switchDataTab(this,'퍼널전환율')">퍼널 전환율</div>
+        <div class="tab" onclick="switchDataTab(this,'커스텀')">커스텀 데이터셋</div>
+      </div>
+
+      <!-- 채널별 신규계약 -->
+      <div id="dtab-채널별신규" class="editor-panel">
+        <div class="editor-header">
+          <span style="font-size:18px">📥</span>
+          <div class="editor-title">채널별 신규계약 데이터</div>
+          <button class="btn btn-secondary" onclick="addRow('channel-table')">+ 행 추가</button>
+          <button class="btn btn-primary" onclick="refreshAllCharts()">차트 업데이트</button>
+        </div>
+        <div class="editor-body">
+          <div class="notice info">💡 구분, 분류, 수량을 수정하면 비중이 자동 계산됩니다.</div>
+          <div class="data-table-wrap">
+            <table class="data-table" id="channel-table">
+              <thead><tr>
+                <th>구분</th><th>분류</th><th>수량</th><th>비중(%)</th><th>비용(원)</th><th>CAC(원)</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><input value="Manpower"/></td>
+                  <td><select><option>Outbound</option><option>Inbound</option><option>Referral</option><option>기타</option></select></td>
+                  <td><input type="number" value="563" class="qty-input" onchange="calcRatios('channel-table')"/></td>
+                  <td><input type="number" value="99.1" readonly style="color:var(--accent2)"/></td>
+                  <td><input type="number" value="0" placeholder="비용"/></td>
+                  <td><input type="number" value="0" placeholder="CAC"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+                <tr>
+                  <td><input value="Product Power"/></td>
+                  <td><select><option>Inbound</option><option selected>Inbound</option><option>Referral</option><option>기타</option></select></td>
+                  <td><input type="number" value="5" class="qty-input" onchange="calcRatios('channel-table')"/></td>
+                  <td><input type="number" value="0.9" readonly style="color:var(--accent2)"/></td>
+                  <td><input type="number" value="0" placeholder="비용"/></td>
+                  <td><input type="number" value="0" placeholder="CAC"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+                <tr>
+                  <td><input value="Product Power"/></td>
+                  <td><select><option>Referral</option><option>Inbound</option><option selected>Referral</option><option>기타</option></select></td>
+                  <td><input type="number" value="0" class="qty-input" onchange="calcRatios('channel-table')"/></td>
+                  <td><input type="number" value="0" readonly style="color:var(--accent2)"/></td>
+                  <td><input type="number" value="0" placeholder="비용"/></td>
+                  <td><input type="number" value="0" placeholder="CAC"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 연도별 누적 -->
+      <div id="dtab-연도별누적" class="editor-panel hidden">
+        <div class="editor-header">
+          <span style="font-size:18px">📅</span>
+          <div class="editor-title">연도별 누적 수량 (현재 속도 유지)</div>
+          <button class="btn btn-secondary" onclick="addYearRow()">+ 연도 추가</button>
+          <button class="btn btn-primary" onclick="refreshAllCharts()">차트 업데이트</button>
+        </div>
+        <div class="editor-body">
+          <div class="data-table-wrap">
+            <table class="data-table" id="year-table">
+              <thead><tr>
+                <th>연도</th><th>Manpower(신규)</th><th>Referral(%)</th><th>Inbound</th><th>Retention(%)</th><th>Bounce</th><th>누적수량(계산)</th><th></th>
+              </tr></thead>
+              <tbody id="year-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 퍼널 전환율 -->
+      <div id="dtab-퍼널전환율" class="editor-panel hidden">
+        <div class="editor-header">
+          <span style="font-size:18px">🔽</span>
+          <div class="editor-title">Sales Conversion 퍼널 전환율</div>
+          <button class="btn btn-primary" onclick="refreshAllCharts()">차트 업데이트</button>
+        </div>
+        <div class="editor-body">
+          <div class="data-table-wrap">
+            <table class="data-table" id="funnel-table">
+              <thead><tr><th>단계</th><th>구간</th><th>전환율(%)</th><th>산출근거</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><input value="Level 1 → 2"/></td>
+                  <td><input value="콜드 → 웜"/></td>
+                  <td><input type="number" value="20" min="0" max="100"/></td>
+                  <td><input value="박규현, 김영만"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+                <tr>
+                  <td><input value="Level 2 → 3"/></td>
+                  <td><input value="웜 → 가계약"/></td>
+                  <td><input type="number" value="24" min="0" max="100"/></td>
+                  <td><input value="지사 설명회 현장제출"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+                <tr>
+                  <td><input value="Level 3 → 4"/></td>
+                  <td><input value="가계약 → 본계약"/></td>
+                  <td><input type="number" value="40" min="0" max="100"/></td>
+                  <td><input value="전국 설명회 기준의 50%"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+                <tr>
+                  <td><input value="Level 4 → 5"/></td>
+                  <td><input value="본계약 → 설치"/></td>
+                  <td><input type="number" value="89" min="0" max="100"/></td>
+                  <td><input value="2026 신학기 준비과정"/></td>
+                  <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 커스텀 -->
+      <div id="dtab-커스텀" class="editor-panel hidden">
+        <div class="editor-header">
+          <span style="font-size:18px">✏️</span>
+          <div class="editor-title">커스텀 데이터셋</div>
+          <button class="btn btn-secondary" onclick="addCustomCol()">+ 열 추가</button>
+          <button class="btn btn-secondary" onclick="addCustomRow()">+ 행 추가</button>
+          <button class="btn btn-primary" onclick="buildCustomChart()">차트 생성</button>
+        </div>
+        <div class="editor-body">
+          <div class="notice info">💡 자유 형식 데이터를 입력하고 차트를 바로 생성할 수 있습니다. GA4 Explorations처럼 원하는 지표를 조합해보세요.</div>
+          <div class="data-table-wrap" id="custom-table-wrap">
+            <!-- built by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CHART BUILDER VIEW ===== -->
+    <div id="view-charts" class="hidden">
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;height:calc(100vh - 160px)">
+        <div class="editor-panel" style="overflow-y:auto">
+          <div class="editor-header"><span style="font-size:18px">🎨</span><div class="editor-title">차트 빌더</div></div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+
+            <div class="ctrl-group">
+              <label>차트 유형</label>
+              <select id="builder-type" onchange="previewChart()">
+                <optgroup label="기본">
+                  <option value="bar">막대 차트 (Bar)</option>
+                  <option value="line">꺾은선 차트 (Line)</option>
+                  <option value="pie">파이 차트 (Pie)</option>
+                  <option value="doughnut">도넛 차트 (Doughnut)</option>
+                  <option value="polarArea">폴라 차트 (Polar Area)</option>
+                  <option value="radar">레이더 차트 (Radar)</option>
+                </optgroup>
+                <optgroup label="고급">
+                  <option value="scatter">산점도 (Scatter)</option>
+                  <option value="bubble">버블 차트 (Bubble)</option>
+                  <option value="bar-stacked">누적 막대 (Stacked Bar)</option>
+                  <option value="bar-grouped">그룹 막대 (Grouped Bar)</option>
+                  <option value="line-area">영역 차트 (Area)</option>
+                  <option value="mixed">혼합 차트 (Mixed Bar+Line)</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="ctrl-group">
+              <label>데이터 소스</label>
+              <select id="builder-source" onchange="loadBuilderData()">
+                <option value="channel">채널별 신규계약</option>
+                <option value="yearly">연도별 누적</option>
+                <option value="funnel">퍼널 전환율</option>
+                <option value="custom">커스텀 데이터</option>
+              </select>
+            </div>
+
+            <div class="ctrl-group">
+              <label>차트 제목</label>
+              <input type="text" id="builder-title" value="신규 차트" onchange="previewChart()"/>
+            </div>
+
+            <div class="ctrl-group">
+              <label>색상 팔레트</label>
+              <div class="color-palette" id="palette-picker"></div>
+            </div>
+
+            <div class="ctrl-group">
+              <label>X축 레이블</label>
+              <input type="text" id="builder-xlabel" value="" onchange="previewChart()"/>
+            </div>
+            <div class="ctrl-group">
+              <label>Y축 레이블</label>
+              <input type="text" id="builder-ylabel" value="" onchange="previewChart()"/>
+            </div>
+
+            <div class="ctrl-group">
+              <label>폰트 크기</label>
+              <input type="number" id="builder-fontsize" value="12" min="8" max="24" onchange="previewChart()"/>
+            </div>
+
+            <div class="ctrl-group">
+              <label>범례 표시</label>
+              <select id="builder-legend" onchange="previewChart()">
+                <option value="top">상단</option><option value="bottom">하단</option>
+                <option value="left">좌측</option><option value="right">우측</option>
+                <option value="false">숨김</option>
+              </select>
+            </div>
+
+            <div class="ctrl-group">
+              <label>대시보드에 추가 (크기)</label>
+              <div class="size-grid">
+                <div class="size-btn" onclick="selectSize(this,'col-4')">1/3</div>
+                <div class="size-btn active" onclick="selectSize(this,'col-6')">1/2</div>
+                <div class="size-btn" onclick="selectSize(this,'col-8')">2/3</div>
+                <div class="size-btn" onclick="selectSize(this,'col-12')">전체</div>
+                <div class="size-btn" onclick="selectSize(this,'col-3')">1/4</div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%" onclick="addChartToDashboard()">대시보드에 추가 ＋</button>
+            <button class="btn btn-secondary" style="width:100%" onclick="previewChart()">🔄 미리보기 새로고침</button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="editor-panel" style="flex:1;display:flex;flex-direction:column">
+            <div class="editor-header"><div class="editor-title">차트 미리보기</div></div>
+            <div style="flex:1;padding:20px;display:flex;align-items:center;justify-content:center">
+              <canvas id="builder-canvas" style="max-height:420px"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== GROWTH FUNNEL VIEW ===== -->
+    <div id="view-funnel" class="hidden">
+      <div class="section-divider">Growth Funnel 구조</div>
+      <div class="notice info">📌 플레이태그의 StoryLine Growth Funnel — 각 단계별 부서 책임, 관리지표, 결과지표 연결 구조</div>
+
+      <div class="chart-card col-12" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Sales Conversion 퍼널 시각화</div>
+        </div>
+        <div class="funnel-container" id="funnel-viz"></div>
+      </div>
+
+      <div class="editor-panel">
+        <div class="editor-header"><span style="font-size:18px">🏗</span><div class="editor-title">StoryLine Growth Funnel — 레벨별 부서 KPI 구조</div></div>
+        <div style="overflow-x:auto">
+          <table class="funnel-table" id="growth-funnel-table">
+            <thead><tr>
+              <th>레벨</th><th>단계명</th><th>담당부서</th><th>관리지표</th><th>결과지표</th><th>영향력</th>
+            </tr></thead>
+            <tbody id="funnel-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PREDICT VIEW ===== -->
+    <div id="view-predict" class="hidden">
+      <div class="notice warn">⚠️ 시뮬레이터는 입력된 파라미터를 기반으로 계산됩니다. 실제 결과와 다를 수 있습니다.</div>
+
+      <div class="section-divider">시나리오 파라미터</div>
+      <div class="prediction-inputs">
+        <div class="pred-field"><label>시작 누적수량</label><input type="number" id="pred-start" value="1000"/></div>
+        <div class="pred-field"><label>시작 연도</label><input type="number" id="pred-year" value="2025"/></div>
+        <div class="pred-field"><label>예측 기간(년)</label><input type="number" id="pred-horizon" value="6" min="1" max="20"/></div>
+        <div class="pred-field"><label>Retention Rate (%)</label><input type="number" id="pred-retention" value="83" step="0.1"/></div>
+        <div class="pred-field"><label>Manpower 신규(기준)</label><input type="number" id="pred-manpower" value="600"/></div>
+        <div class="pred-field"><label>Manpower 연성장률(%)</label><input type="number" id="pred-manpower-growth" value="30" step="1"/></div>
+        <div class="pred-field"><label>Inbound (기준)</label><input type="number" id="pred-inbound" value="5"/></div>
+        <div class="pred-field"><label>Inbound 성장률(%)</label><input type="number" id="pred-inbound-growth" value="9" step="1"/></div>
+        <div class="pred-field"><label>Referral Rate (%)</label><input type="number" id="pred-referral" value="0" step="0.1"/></div>
+        <div class="pred-field"><label>목표 기관수</label><input type="number" id="pred-target" value="6000"/></div>
+        <div class="pred-field"><label>시나리오명</label><input type="text" id="pred-name" value="현재 속도 유지"/></div>
+        <div class="pred-field" style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary" style="width:100%" onclick="runPrediction()">시뮬레이션 실행 ▶</button>
+        </div>
+      </div>
+
+      <div class="scenario-grid" id="scenario-cards"></div>
+
+      <div class="chart-card col-12" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">누적수량 예측 시뮬레이션</div>
+          <div class="card-actions">
+            <button class="btn btn-secondary" onclick="clearScenarios()">초기화</button>
+          </div>
+        </div>
+        <div class="card-body" style="height:360px">
+          <canvas id="predict-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="insight-box" id="predict-insight">
+        시뮬레이션을 실행하면 인사이트가 표시됩니다.
+      </div>
+
+      <div class="section-divider">목표 달성 요인 분석</div>
+      <div class="chart-card col-12">
+        <div class="card-header"><div class="card-title">성장 드라이버별 기여도 분석</div></div>
+        <div class="card-body" style="height:300px">
+          <canvas id="driver-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== DEPT KPI VIEW ===== -->
+    <div id="view-dept" class="hidden">
+      <div class="section-divider">부서별 관리지표 및 영향력</div>
+      <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="kpi-card blue"><div class="kpi-label">Business</div><div class="kpi-value" style="font-size:20px">Sales·CRM</div><div class="kpi-delta">Expansion 100% + Retention 50%</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Product</div><div class="kpi-value" style="font-size:20px">Usability</div><div class="kpi-delta">Retention 80% 핵심 드라이버</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">R&D</div><div class="kpi-value" style="font-size:20px">Stability</div><div class="kpi-delta">AI 인식률·정확성·안정성</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Operation</div><div class="kpi-value" style="font-size:20px">Service</div><div class="kpi-delta">설치·운영 Retention 지원</div></div>
+      </div>
+
+      <div class="chart-card col-12" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title">부서별 Retention 영향력 분포</div></div>
+        <div class="card-body" style="height:320px">
+          <canvas id="dept-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="editor-panel">
+        <div class="editor-header"><span style="font-size:18px">📋</span><div class="editor-title">부서별 단계 달성 관리지표</div><button class="btn btn-secondary" onclick="addDeptRow()">+ 행 추가</button></div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="dept-kpi-table" style="min-width:800px">
+            <thead><tr><th>레벨</th><th>단계</th><th>부서</th><th>관리지표</th><th>결과지표</th><th>영향력</th><th>현재값</th><th>목표값</th><th></th></tr></thead>
+            <tbody id="dept-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== CHART EDIT MODAL ===== -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal" style="width:820px;max-width:96vw">
+    <div class="modal-header" style="background:linear-gradient(135deg,#f8faff,#f0f4ff)">
+      <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+        <div class="modal-title">차트 편집</div>
+        <div style="font-size:11px;color:var(--text3)" id="edit-modal-subtitle">유형·색상·데이터를 자유롭게 수정하세요</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-edit')">×</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- TAB BAR -->
+      <div style="display:flex;border-bottom:1px solid var(--border);padding:0 24px;background:#fafbff">
+        <div class="edit-tab active" data-tab="type" onclick="switchEditTab(this)">📊 차트 유형</div>
+        <div class="edit-tab" data-tab="color" onclick="switchEditTab(this)">🎨 색상·스타일</div>
+        <div class="edit-tab" data-tab="data" onclick="switchEditTab(this)">📋 데이터 편집</div>
+        <div class="edit-tab" data-tab="compare" onclick="switchEditTab(this)">⚡ 비교 추가</div>
+      </div>
+
+      <!-- TAB: TYPE -->
+      <div class="edit-tab-panel" id="etab-type" style="padding:20px 24px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;margin-bottom:10px">차트 유형 선택</div>
+            <div id="type-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;margin-bottom:10px">미리보기</div>
+            <div style="background:var(--bg);border-radius:10px;padding:12px;height:220px;display:flex;align-items:center;justify-content:center">
+              <canvas id="edit-preview-canvas" style="max-height:196px"></canvas>
+            </div>
+            <div style="margin-top:12px">
+              <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">차트 제목</label>
+              <input id="edit-title" type="text" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit" oninput="refreshEditPreview()"/>
+            </div>
+            <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">범례 위치</label>
+                <select id="edit-legend" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit" onchange="refreshEditPreview()">
+                  <option value="top">상단</option><option value="bottom">하단</option>
+                  <option value="left">좌측</option><option value="right">우측</option>
+                  <option value="false">숨김</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">폰트 크기</label>
+                <input id="edit-fontsize" type="number" value="12" min="8" max="20" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px" oninput="refreshEditPreview()"/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: COLOR -->
+      <div class="edit-tab-panel hidden" id="etab-color" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;margin-bottom:12px">프리셋 팔레트</div>
+        <div id="edit-palette-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px"></div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;margin-bottom:10px">데이터셋별 커스텀 색상</div>
+        <div id="edit-color-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+
+        <div style="background:var(--bg);border-radius:10px;padding:12px;height:200px;display:flex;align-items:center;justify-content:center">
+          <canvas id="edit-color-preview" style="max-height:176px"></canvas>
+        </div>
+      </div>
+
+      <!-- TAB: DATA -->
+      <div class="edit-tab-panel hidden" id="etab-data" style="padding:20px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;flex:1">인라인 데이터 편집</div>
+          <button class="btn btn-secondary" style="font-size:11px" onclick="editAddDataRow()">+ 행</button>
+          <button class="btn btn-secondary" style="font-size:11px" onclick="editAddDataset()">+ 데이터셋</button>
+          <button class="btn btn-primary" style="font-size:11px" onclick="applyEditData()">적용 ▶</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="edit-data-table">
+            <thead id="edit-data-thead"><tr></tr></thead>
+            <tbody id="edit-data-tbody"></tbody>
+          </table>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px;height:180px;margin-top:14px;display:flex;align-items:center;justify-content:center">
+          <canvas id="edit-data-preview" style="max-height:156px"></canvas>
+        </div>
+      </div>
+
+      <!-- TAB: COMPARE -->
+      <div class="edit-tab-panel hidden" id="etab-compare" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:0.5px;margin-bottom:12px">비교 데이터셋 추가</div>
+        <div class="notice info" style="margin-bottom:14px">기존 차트에 새 데이터 소스를 레이어로 추가합니다. 교차 분석, 목표선, 보조 지표를 오버레이할 수 있습니다.</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">추가할 데이터 소스</label>
+            <select id="compare-source" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+              <option value="yearly_cumulative">연도별 누적수량</option>
+              <option value="yearly_manpower">연도별 Manpower</option>
+              <option value="funnel">퍼널 전환율</option>
+              <option value="channel">채널별 수량</option>
+              <option value="custom_line">커스텀 직선 (목표값)</option>
+              <option value="manual">수동 입력</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">시리즈 유형</label>
+            <select id="compare-type" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+              <option value="bar">막대 (Bar)</option>
+              <option value="line">꺾은선 (Line)</option>
+              <option value="line-dash">점선 (Dashed Line)</option>
+              <option value="scatter">점 (Scatter)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">레이블명</label>
+            <input id="compare-label" type="text" placeholder="비교 항목 이름" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit"/>
+          </div>
+        </div>
+
+        <div id="compare-manual-wrap" class="hidden" style="margin-bottom:14px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">수동 값 입력 (쉼표 구분)</label>
+          <input id="compare-manual-vals" type="text" placeholder="예: 100,200,350,480,700" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit"/>
+        </div>
+        <div id="compare-line-wrap" class="hidden" style="margin-bottom:14px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px">목표값 (고정 수평선)</label>
+          <input id="compare-line-val" type="number" placeholder="예: 6000" style="width:200px;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit"/>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn btn-primary" onclick="addCompareLayer()">레이어 추가 ＋</button>
+          <button class="btn btn-secondary" onclick="clearCompareLayers()">모든 레이어 초기화</button>
+        </div>
+
+        <!-- LAYER LIST -->
+        <div id="compare-layer-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+
+        <div style="background:var(--bg);border-radius:10px;padding:12px;height:200px;display:flex;align-items:center;justify-content:center">
+          <canvas id="edit-compare-preview" style="max-height:176px"></canvas>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:#fafbff">
+        <button class="btn btn-secondary" onclick="closeModal('modal-edit')">취소</button>
+        <button class="btn btn-primary" onclick="applyEdit()">변경사항 적용 ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CHART MODAL -->
+<div class="modal-overlay" id="modal-add">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">빠른 차트 추가</div>
+      <button class="modal-close" onclick="closeModal('modal-add')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="chart-controls">
+        <div class="ctrl-group"><label>차트 유형</label>
+          <select id="quick-type">
+            <option value="bar">막대</option><option value="line">꺾은선</option>
+            <option value="pie">파이</option><option value="doughnut">도넛</option>
+            <option value="radar">레이더</option><option value="polarArea">폴라</option>
+            <option value="bar-stacked">누적 막대</option><option value="mixed">혼합</option>
+          </select>
+        </div>
+        <div class="ctrl-group"><label>데이터 소스</label>
+          <select id="quick-source">
+            <option value="channel">채널별 신규계약</option>
+            <option value="yearly">연도별 누적</option>
+            <option value="funnel">퍼널 전환율</option>
+          </select>
+        </div>
+        <div class="ctrl-group"><label>제목</label><input type="text" id="quick-title" value="새 차트"/></div>
+        <div class="ctrl-group"><label>크기</label>
+          <select id="quick-size">
+            <option value="col-4">작게 (1/3)</option>
+            <option value="col-6" selected>보통 (1/2)</option>
+            <option value="col-8">크게 (2/3)</option>
+            <option value="col-12">전체 너비</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-secondary" onclick="closeModal('modal-add')">취소</button>
+        <button class="btn btn-primary" onclick="quickAddChart()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
